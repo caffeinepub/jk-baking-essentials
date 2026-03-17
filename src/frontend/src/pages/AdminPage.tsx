@@ -29,17 +29,14 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
 import {
   AlertTriangle,
   Loader2,
-  LogOut,
   Pencil,
   Plus,
   Save,
   Trash2,
 } from "lucide-react";
-import { useEffect } from "react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Order, Product } from "../backend.d";
@@ -63,27 +60,17 @@ const EMPTY_PRODUCT: Omit<Product, "id"> = {
 export default function AdminPage() {
   const { actor, isFetching } = useActor();
   const qc = useQueryClient();
-  const navigate = useNavigate();
-
-  // Guard: require PIN auth
-  useEffect(() => {
-    if (localStorage.getItem("adminAuthenticated") !== "true") {
-      navigate({ to: "/admin-login" });
-    }
-  }, [navigate]);
-
-  const isAuthenticated = localStorage.getItem("adminAuthenticated") === "true";
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ["products"],
     queryFn: () => actor!.getProducts(),
-    enabled: !!actor && !isFetching && isAuthenticated,
+    enabled: !!actor && !isFetching,
   });
 
   const { data: orders = [] } = useQuery<Order[]>({
     queryKey: ["allOrders"],
     queryFn: () => actor!.getAllOrders(),
-    enabled: !!actor && !isFetching && isAuthenticated,
+    enabled: !!actor && !isFetching,
   });
 
   const [productForm, setProductForm] = useState<
@@ -148,13 +135,7 @@ export default function AdminPage() {
     onError: () => toast.error("Failed to update status"),
   });
 
-  const handleLogout = () => {
-    localStorage.removeItem("adminAuthenticated");
-    toast.success("Logged out successfully.");
-    navigate({ to: "/" });
-  };
-
-  if (!isAuthenticated) {
+  if (isFetching) {
     return (
       <div
         className="container mx-auto px-4 py-20 text-center"
@@ -204,15 +185,6 @@ export default function AdminPage() {
     <main className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-8">
         <h1 className="font-display text-4xl font-bold">Admin Dashboard</h1>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleLogout}
-          data-ocid="admin.logout.button"
-        >
-          <LogOut className="h-4 w-4 mr-2" />
-          Logout
-        </Button>
       </div>
 
       <Tabs defaultValue="products">

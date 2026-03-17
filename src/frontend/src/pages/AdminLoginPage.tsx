@@ -17,17 +17,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useActor } from "../hooks/useActor";
 
-const ADMIN_EMAIL = "kishooore1@gmail.com";
-const PIN_STORAGE_KEY = "adminPinHash";
 const PIN_AUTH_KEY = "adminAuthenticated";
-
-async function hashPin(pin: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(`${pin}jkbaking_salt_2024`);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
+const PIN_SET_KEY = "adminPinConfigured";
 
 export default function AdminLoginPage() {
   const navigate = useNavigate();
@@ -38,9 +29,22 @@ export default function AdminLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem(PIN_STORAGE_KEY);
-    setIsPinSet(!!stored);
-  }, []);
+    if (!actor) return;
+    // Check backend whether PIN has been set
+    actor
+      .isAdminPinSet()
+      .then((set: boolean) => {
+        setIsPinSet(set);
+        if (set) {
+          // Keep local marker in sync
+          localStorage.setItem(PIN_SET_KEY, "true");
+        }
+      })
+      .catch(() => {
+        // Fallback to local storage
+        setIsPinSet(!!localStorage.getItem(PIN_SET_KEY));
+      });
+  }, [actor]);
 
   const handleSetPin = async () => {
     if (pin.length !== 4) {
@@ -58,16 +62,21 @@ export default function AdminLoginPage() {
     }
     setIsLoading(true);
     try {
-      // Store PIN hash locally
-      const hashed = await hashPin(pin);
-      localStorage.setItem(PIN_STORAGE_KEY, hashed);
-      // Also register PIN on backend so admin backend operations work
-      await actor.setAdminPin(pin);
+      const success = await actor.setAdminPin(pin);
+      if (!success) {
+        toast.error("PIN already set. Please use the login form below.");
+        setIsPinSet(true);
+        return;
+      }
+      // Immediately log in after setting PIN
+      await actor.adminPinLogin(pin);
+      localStorage.setItem(PIN_SET_KEY, "true");
       localStorage.setItem(PIN_AUTH_KEY, "true");
       toast.success("Admin PIN set! Welcome to the dashboard.");
       navigate({ to: "/admin" });
-    } catch {
-      toast.error("Setup failed. Please try again.");
+    } catch (err) {
+      console.error(err);
+      toast.error("Setup failed. Please refresh and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -84,24 +93,32 @@ export default function AdminLoginPage() {
     }
     setIsLoading(true);
     try {
-      // Verify PIN locally first
-      const hashed = await hashPin(pin);
-      const stored = localStorage.getItem(PIN_STORAGE_KEY);
-      if (hashed !== stored) {
+      const success = await actor.adminPinLogin(pin);
+      if (!success) {
         toast.error("Incorrect PIN. Please try again.");
         setPin("");
         return;
       }
-      // Grant backend admin access for this session
-      await actor.adminPinLogin(pin);
       localStorage.setItem(PIN_AUTH_KEY, "true");
       toast.success("Welcome, Admin!");
       navigate({ to: "/admin" });
-    } catch {
-      toast.error("Login failed. Please try again.");
+    } catch (err) {
+      console.error(err);
+      toast.error("Login failed. Please refresh and try again.");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleResetPin = () => {
+    localStorage.removeItem(PIN_SET_KEY);
+    localStorage.removeItem(PIN_AUTH_KEY);
+    setIsPinSet(false);
+    setPin("");
+    setConfirmPin("");
+    toast.info(
+      "PIN reset. You can set a new PIN after re-deploying or contact support.",
+    );
   };
 
   if (isPinSet === null || isFetching) {
@@ -132,16 +149,7 @@ export default function AdminLoginPage() {
           </CardHeader>
 
           <CardContent className="space-y-6">
-            {/* Admin email badge */}
-            <div className="rounded-lg border border-border bg-muted/50 px-4 py-3 text-center">
-              <p className="text-xs text-muted-foreground mb-0.5">
-                Admin account
-              </p>
-              <p className="text-sm font-medium">{ADMIN_EMAIL}</p>
-            </div>
-
             {!isPinSet ? (
-              /* First time — set PIN */
               <div className="space-y-5">
                 <p className="text-sm text-muted-foreground text-center">
                   First-time setup — create a 4-digit PIN to secure the admin
@@ -211,7 +219,6 @@ export default function AdminLoginPage() {
                 </Button>
               </div>
             ) : (
-              /* PIN login */
               <div className="space-y-5">
                 <p className="text-sm text-muted-foreground text-center">
                   Enter your 4-digit admin PIN.
@@ -253,14 +260,10 @@ export default function AdminLoginPage() {
                 <button
                   type="button"
                   className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors text-center"
-                  onClick={() => {
-                    localStorage.removeItem(PIN_STORAGE_KEY);
-                    setIsPinSet(false);
-                    setPin("");
-                  }}
+                  onClick={handleResetPin}
                   data-ocid="admin_login.secondary_button"
                 >
-                  Reset PIN
+                  Forgot PIN? Reset
                 </button>
               </div>
             )}

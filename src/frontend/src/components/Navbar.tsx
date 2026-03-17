@@ -54,12 +54,12 @@ export default function Navbar() {
               </Link>
             )}
             <Link
-              to="/admin-login"
+              to="/admin"
               className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
-              data-ocid="nav.admin_login.link"
+              data-ocid="nav.admin.link"
             >
               <ShieldCheck className="h-3.5 w-3.5" />
-              Admin Login
+              Admin
             </Link>
           </div>
 
