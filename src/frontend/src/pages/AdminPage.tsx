@@ -29,20 +29,22 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import {
   AlertTriangle,
   Loader2,
+  LogOut,
   Pencil,
   Plus,
   Save,
   Trash2,
 } from "lucide-react";
+import { useEffect } from "react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Order, Product } from "../backend.d";
 import { type OrderStatus, ProductCategory } from "../backend.d";
 import { useActor } from "../hooks/useActor";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   CATEGORY_LABELS,
   ORDER_STATUS_COLORS,
@@ -59,26 +61,29 @@ const EMPTY_PRODUCT: Omit<Product, "id"> = {
 };
 
 export default function AdminPage() {
-  const { actor } = useActor();
-  const { identity } = useInternetIdentity();
+  const { actor, isFetching } = useActor();
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
-  const { data: isAdmin, isLoading: checkingAdmin } = useQuery({
-    queryKey: ["isAdmin", identity?.getPrincipal().toString()],
-    queryFn: () => actor!.isCallerAdmin(),
-    enabled: !!actor && !!identity,
-  });
+  // Guard: require PIN auth
+  useEffect(() => {
+    if (localStorage.getItem("adminAuthenticated") !== "true") {
+      navigate({ to: "/admin-login" });
+    }
+  }, [navigate]);
+
+  const isAuthenticated = localStorage.getItem("adminAuthenticated") === "true";
 
   const { data: products = [] } = useQuery<Product[]>({
     queryKey: ["products"],
     queryFn: () => actor!.getProducts(),
-    enabled: !!actor && !!isAdmin,
+    enabled: !!actor && !isFetching && isAuthenticated,
   });
 
   const { data: orders = [] } = useQuery<Order[]>({
     queryKey: ["allOrders"],
     queryFn: () => actor!.getAllOrders(),
-    enabled: !!actor && !!isAdmin,
+    enabled: !!actor && !isFetching && isAuthenticated,
   });
 
   const [productForm, setProductForm] = useState<
@@ -86,8 +91,6 @@ export default function AdminPage() {
   >(EMPTY_PRODUCT);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-
-  // Stock management: local edits before save
   const [stockEdits, setStockEdits] = useState<Record<string, string>>({});
 
   const addMutation = useMutation({
@@ -145,29 +148,19 @@ export default function AdminPage() {
     onError: () => toast.error("Failed to update status"),
   });
 
-  if (!identity) {
-    return (
-      <div className="container mx-auto px-4 py-20 text-center">
-        <p>Please login to access admin.</p>
-      </div>
-    );
-  }
+  const handleLogout = () => {
+    localStorage.removeItem("adminAuthenticated");
+    toast.success("Logged out successfully.");
+    navigate({ to: "/" });
+  };
 
-  if (checkingAdmin) {
+  if (!isAuthenticated) {
     return (
       <div
         className="container mx-auto px-4 py-20 text-center"
         data-ocid="admin.loading_state"
       >
         <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="container mx-auto px-4 py-20 text-center">
-        <p className="text-destructive">Access denied. Admin only.</p>
       </div>
     );
   }
@@ -209,7 +202,18 @@ export default function AdminPage() {
 
   return (
     <main className="container mx-auto px-4 py-8">
-      <h1 className="font-display text-4xl font-bold mb-8">Admin Dashboard</h1>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="font-display text-4xl font-bold">Admin Dashboard</h1>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleLogout}
+          data-ocid="admin.logout.button"
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          Logout
+        </Button>
+      </div>
 
       <Tabs defaultValue="products">
         <TabsList className="mb-6">

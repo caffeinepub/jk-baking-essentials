@@ -6,31 +6,16 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import {
-  LayoutDashboard,
-  LogOut,
-  Package,
-  ShoppingCart,
-  User,
-} from "lucide-react";
+import { LogOut, Package, ShieldCheck, ShoppingCart, User } from "lucide-react";
 import { useCart } from "../context/CartContext";
-import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import CartDrawer from "./CartDrawer";
 
 export default function Navbar() {
   const { totalItems, isOpen, setIsOpen } = useCart();
   const { identity, login, clear } = useInternetIdentity();
-  const { actor } = useActor();
   const navigate = useNavigate();
-
-  const { data: isAdmin } = useQuery({
-    queryKey: ["isAdmin", identity?.getPrincipal().toString()],
-    queryFn: () => actor!.isCallerAdmin(),
-    enabled: !!actor && !!identity,
-  });
 
   return (
     <>
@@ -68,15 +53,14 @@ export default function Navbar() {
                 My Orders
               </Link>
             )}
-            {isAdmin && (
-              <Link
-                to="/admin"
-                className="text-sm font-medium hover:text-primary transition-colors"
-                data-ocid="nav.admin.link"
-              >
-                Admin
-              </Link>
-            )}
+            <Link
+              to="/admin-login"
+              className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+              data-ocid="nav.admin_login.link"
+            >
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Admin Login
+            </Link>
           </div>
 
           <div className="flex items-center gap-2">
@@ -105,16 +89,6 @@ export default function Navbar() {
                 >
                   <Package className="h-5 w-5" />
                 </Button>
-                {isAdmin && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => navigate({ to: "/admin" })}
-                    data-ocid="nav.admin.button"
-                  >
-                    <LayoutDashboard className="h-5 w-5" />
-                  </Button>
-                )}
                 <Button
                   variant="ghost"
                   size="icon"

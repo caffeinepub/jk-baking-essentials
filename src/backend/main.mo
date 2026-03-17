@@ -20,6 +20,51 @@ actor {
   // Stripe configuration (initialized as null)
   var stripeConfig : ?Stripe.StripeConfiguration = null;
 
+  // Legacy stable vars kept for upgrade migration compatibility
+  var adminEmail : Text = "kishooore1@gmail.com";
+  var adminPassword : ?Text = null;
+
+  // Admin credentials (PIN-based, no Internet Identity required)
+  var adminPin : ?Text = null; // 4-digit PIN, set on first login
+
+  public shared ({ caller }) func setAdminPin(pin : Text) : async Bool {
+    switch (adminPin) {
+      case (null) {
+        // First time setup
+        adminPin := ?pin;
+        AccessControl.assignRole(accessControlState, caller, caller, #admin);
+        true;
+      };
+      case (?_) {
+        // Already set, only existing admin can change
+        if (AccessControl.hasPermission(accessControlState, caller, #admin)) {
+          adminPin := ?pin;
+          true;
+        } else {
+          false;
+        };
+      };
+    };
+  };
+
+  public shared ({ caller }) func adminPinLogin(pin : Text) : async Bool {
+    switch (adminPin) {
+      case (null) { false };
+      case (?stored) {
+        if (stored == pin) {
+          AccessControl.assignRole(accessControlState, caller, caller, #admin);
+          true;
+        } else {
+          false;
+        };
+      };
+    };
+  };
+
+  public query func isAdminPinSet() : async Bool {
+    adminPin != null;
+  };
+
   // Helper function to get current Stripe configuration, or trap if not set
   func getStripeConfiguration() : Stripe.StripeConfiguration {
     switch (stripeConfig) {
@@ -190,7 +235,6 @@ actor {
       Runtime.trap("Unauthorized: Only admins can seed products");
     };
 
-    // Seed with sample data (images omitted)
     let seedData : [Product] = [
       {
         id = "1";

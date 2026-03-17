@@ -119,6 +119,7 @@ export enum UserRole {
 export interface backendInterface {
     addProduct(product: Product): Promise<void>;
     addToCart(productId: string, quantity: bigint): Promise<void>;
+    adminPinLogin(pin: string): Promise<boolean>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     clearCart(): Promise<void>;
     createCheckoutSession(items: Array<ShoppingItem>, successUrl: string, cancelUrl: string): Promise<string>;
@@ -134,6 +135,7 @@ export interface backendInterface {
     getStripeSessionStatus(sessionId: string): Promise<StripeSessionStatus>;
     getUserOrders(): Promise<Array<Order>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
+    isAdminPinSet(): Promise<boolean>;
     isCallerAdmin(): Promise<boolean>;
     isStripeConfigured(): Promise<boolean>;
     isValidPincode(pincode: string): Promise<boolean>;
@@ -141,6 +143,7 @@ export interface backendInterface {
     removeFromCart(productId: string): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     seedProducts(): Promise<void>;
+    setAdminPassword(email: string, password: string): Promise<boolean>;
     setStripeConfiguration(config: StripeConfiguration): Promise<void>;
     transform(input: TransformationInput): Promise<TransformationOutput>;
     updateOrderStatus(orderId: string, newStatus: OrderStatus): Promise<void>;

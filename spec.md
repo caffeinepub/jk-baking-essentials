@@ -1,29 +1,24 @@
 # JK Baking Essentials
 
 ## Current State
-- Shop named "Bake & Deliver" in Navbar and throughout the app
-- HomePage has a "Fresh Baking Essentials" hero tagline and a Delivery Zone section
-- Admin page has stock field but no dedicated stock management view
-- CheckoutPage has delivery options but no delivery zone info
+Admin login requires two steps: (1) Internet Identity login, (2) enter/set a password. Users reported this setup was failing and confusing.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Delivery zone info section moved to CheckoutPage/payment flow
-- Stock management tab or section in AdminPage showing stock levels per product with ability to update
+- PIN-based admin login (4-digit numeric PIN)
+- First-visit PIN setup screen (set PIN + confirm)
+- Backend functions: `setAdminPin`, `adminPinLogin`, `isAdminPinSet`
 
 ### Modify
-- Rename shop from "Bake & Deliver" to "JK Baking Essentials" everywhere (Navbar, page titles, footer, meta)
-- Remove the word "Fresh" from HomePage hero tagline
-- Remove the Delivery Zone section from HomePage
+- Remove Internet Identity requirement from admin login page
+- Replace password input with 4-digit OTP PIN input
+- Backend: replace `adminPassword` / `setAdminPassword` / `adminLogin` with PIN equivalents
 
 ### Remove
-- Delivery Zone section from HomePage
-- "Fresh" text from HomePage
+- Internet Identity step from admin login flow
+- Password-based admin auth
 
 ## Implementation Plan
-1. Replace all instances of "Bake & Deliver" with "JK Baking Essentials" in Navbar, App, and any other files
-2. Remove "Fresh" from the HomePage hero text
-3. Remove the Delivery Zone `<section>` from HomePage
-4. Add delivery zone info card to CheckoutPage above or below the delivery method selector
-5. Add a Stock Management tab in AdminPage that lists all products with current stock quantity and an input to update stock per product
+1. Update `main.mo`: replace `adminPassword` var and password functions with `adminPin` and PIN functions
+2. Update `AdminLoginPage.tsx`: remove II logic, replace password form with InputOTP 4-digit PIN, store session in localStorage

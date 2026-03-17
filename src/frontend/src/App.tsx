@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-router";
 import Navbar from "./components/Navbar";
 import { CartProvider } from "./context/CartContext";
+import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminPage from "./pages/AdminPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import HomePage from "./pages/HomePage";
@@ -63,6 +64,12 @@ const adminRoute = createRoute({
   component: AdminPage,
 });
 
+const adminLoginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin-login",
+  component: AdminLoginPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   productsRoute,
@@ -70,6 +77,7 @@ const routeTree = rootRoute.addChildren([
   orderSuccessRoute,
   ordersRoute,
   adminRoute,
+  adminLoginRoute,
 ]);
 
 const router = createRouter({ routeTree });
